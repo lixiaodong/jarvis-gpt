@@ -1,6 +1,6 @@
 FROM langgenius/base:1.0.0-bullseye-slim
 
-LABEL maintainer="takatost@gmail.com"
+LABEL maintainer="cryptolxd@gmail.com"
 
 ENV EDITION SELF_HOSTED
 ENV DEPLOY_ENV PRODUCTION
