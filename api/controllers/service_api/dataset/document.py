@@ -11,7 +11,7 @@ from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError, DocumentIndexingError, \
     DatasetNotInitedError
 from controllers.service_api.wraps import DatasetApiResource
-from core.llm.error import ProviderTokenNotInitError
+from core.model_providers.error import ProviderTokenNotInitError
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import UploadFile
@@ -69,21 +69,25 @@ class DocumentListApi(DatasetApiResource):
         document_data = {
             'data_source': {
                 'type': 'upload_file',
-                'info': upload_file.id
+                'info': [
+                    {
+                        'upload_file_id': upload_file.id
+                    }
+                ]
             }
         }
 
         try:
-            document = DocumentService.save_document_with_dataset_id(
+            documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
                 document_data=document_data,
                 account=dataset.created_by_account,
                 dataset_process_rule=dataset.latest_process_rule,
                 created_from='api'
             )
-        except ProviderTokenNotInitError:
-            raise ProviderNotInitializeError()
-
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        document = documents[0]
         if doc_type and doc_metadata:
             metadata_schema = DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type]
 

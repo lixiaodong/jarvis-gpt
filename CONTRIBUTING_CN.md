@@ -16,15 +16,15 @@
 
 ## 本地开发
 
-要设置一个可工作的开发环境，只需 fork 项目的 git 存储库，并使用适当的软件包管理器安装后端和前端依赖项，然后创建并运行 docker-compose 堆栈。
+要设置一个可工作的开发环境，只需 fork 项目的 git 存储库，并使用适当的软件包管理器安装后端和前端依赖项，然后创建并运行 docker-compose。
 
 ### Fork存储库
 
-您需要 fork [存储库](https://github.com/langgenius/dify)。
+您需要 fork [Git 仓库](https://github.com/langgenius/dify)。
 
 ### 克隆存储库
 
-克隆您在 GitHub 上 fork 的存储库：
+克隆您在 GitHub 上 fork 的仓库：
 
 ```
 git clone git@github.com:<github_username>/dify.git
@@ -51,3 +51,7 @@ git clone git@github.com:<github_username>/dify.git
 ## 社区渠道
 
 遇到困难了吗？有任何问题吗? 加入 [Discord Community Server](https://discord.gg/AhzKf7dNgk)，我们将为您提供帮助。
+
+### 多语言支持
+
+需要参与贡献翻译内容，请参阅[前端多语言翻译 README](web/i18n/README_CN.md)。

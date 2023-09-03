@@ -1,14 +1,38 @@
 import type { Fetcher } from 'swr'
-import { del, get, post, put, patch } from './base'
 import qs from 'qs'
-import type { RelatedAppResponse, DataSet, HitTestingResponse, HitTestingRecordsResponse, DataSetListResponse, CreateDocumentReq, InitialDocumentDetail, DocumentDetailResponse, DocumentListResponse, IndexingEstimateResponse, FileIndexingEstimateResponse, IndexingStatusResponse, ProcessRuleResponse, SegmentsQuery, SegmentsResponse, createDocumentResponse } from '@/models/datasets'
-import type { CommonResponse } from '@/models/common'
+import { del, get, patch, post, put } from './base'
+import type {
+  CreateDocumentReq,
+  DataSet,
+  DataSetListResponse,
+  DocumentDetailResponse,
+  DocumentListResponse,
+  FileIndexingEstimateResponse,
+  HitTestingRecordsResponse,
+  HitTestingResponse,
+  IndexingEstimateResponse,
+  IndexingStatusBatchResponse,
+  IndexingStatusResponse,
+  ProcessRuleResponse,
+  RelatedAppResponse,
+  SegmentDetailModel,
+  SegmentUpdator,
+  SegmentsQuery,
+  SegmentsResponse,
+  createDocumentResponse,
+} from '@/models/datasets'
+import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
 
 // apis for documents in a dataset
 
 type CommonDocReq = {
   datasetId: string
   documentId: string
+}
+
+type BatchReq = {
+  datasetId: string
+  batchId: string
 }
 
 export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
@@ -19,17 +43,17 @@ export const fetchDataDetail: Fetcher<DataSet, string> = (datasetId: string) => 
   return get(`/datasets/${datasetId}`) as Promise<DataSet>
 }
 
-export const updateDatasetSetting: Fetcher<DataSet, { datasetId: string, body: Partial<Pick<DataSet, 'name' | 'description' | 'permission' | 'indexing_technique'>>}> = ({ datasetId, body }) => {
-  return patch(`/datasets/${datasetId}`, { body } ) as Promise<DataSet>
+export const updateDatasetSetting: Fetcher<DataSet, { datasetId: string; body: Partial<Pick<DataSet, 'name' | 'description' | 'permission' | 'indexing_technique'>> }> = ({ datasetId, body }) => {
+  return patch(`/datasets/${datasetId}`, { body }) as Promise<DataSet>
 }
 
 export const fetchDatasetRelatedApps: Fetcher<RelatedAppResponse, string> = (datasetId: string) => {
   return get(`/datasets/${datasetId}/related-apps`) as Promise<RelatedAppResponse>
 }
 
-export const fetchDatasets: Fetcher<DataSetListResponse, { url: string, params: { page: number, ids?: string[], limit?: number } }> = ({ url, params }) => {
+export const fetchDatasets: Fetcher<DataSetListResponse, { url: string; params: { page: number; ids?: string[]; limit?: number } }> = ({ url, params }) => {
   const urlParams = qs.stringify(params, { indices: false })
-  return get(`${url}?${urlParams}`,) as Promise<DataSetListResponse>
+  return get(`${url}?${urlParams}`) as Promise<DataSetListResponse>
 }
 
 export const createEmptyDataset: Fetcher<DataSet, { name: string }> = ({ name }) => {
@@ -52,19 +76,26 @@ export const fetchDocuments: Fetcher<DocumentListResponse, { datasetId: string; 
 }
 
 export const createFirstDocument: Fetcher<createDocumentResponse, { body: CreateDocumentReq }> = ({ body }) => {
-  return post(`/datasets/init`, { body }) as Promise<createDocumentResponse>
+  return post('/datasets/init', { body }) as Promise<createDocumentResponse>
 }
 
-export const createDocument: Fetcher<InitialDocumentDetail, { datasetId: string; body: CreateDocumentReq }> = ({ datasetId, body }) => {
-  return post(`/datasets/${datasetId}/documents`, { body }) as Promise<InitialDocumentDetail>
+export const createDocument: Fetcher<createDocumentResponse, { datasetId: string; body: CreateDocumentReq }> = ({ datasetId, body }) => {
+  return post(`/datasets/${datasetId}/documents`, { body }) as Promise<createDocumentResponse>
 }
 
 export const fetchIndexingEstimate: Fetcher<IndexingEstimateResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return get(`/datasets/${datasetId}/documents/${documentId}/indexing-estimate`, {}) as Promise<IndexingEstimateResponse>
 }
+export const fetchIndexingEstimateBatch: Fetcher<IndexingEstimateResponse, BatchReq> = ({ datasetId, batchId }) => {
+  return get(`/datasets/${datasetId}/batch/${batchId}/indexing-estimate`, {}) as Promise<IndexingEstimateResponse>
+}
 
 export const fetchIndexingStatus: Fetcher<IndexingStatusResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return get(`/datasets/${datasetId}/documents/${documentId}/indexing-status`, {}) as Promise<IndexingStatusResponse>
+}
+
+export const fetchIndexingStatusBatch: Fetcher<IndexingStatusBatchResponse, BatchReq> = ({ datasetId, batchId }) => {
+  return get(`/datasets/${datasetId}/batch/${batchId}/indexing-status`, {}) as Promise<IndexingStatusBatchResponse>
 }
 
 export const fetchDocumentDetail: Fetcher<DocumentDetailResponse, CommonDocReq & { params: { metadata?: MetadataType } }> = ({ datasetId, documentId, params }) => {
@@ -87,12 +118,24 @@ export const archiveDocument: Fetcher<CommonResponse, CommonDocReq> = ({ dataset
   return patch(`/datasets/${datasetId}/documents/${documentId}/status/archive`) as Promise<CommonResponse>
 }
 
+export const unArchiveDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
+  return patch(`/datasets/${datasetId}/documents/${documentId}/status/un_archive`) as Promise<CommonResponse>
+}
+
 export const enableDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return patch(`/datasets/${datasetId}/documents/${documentId}/status/enable`) as Promise<CommonResponse>
 }
 
 export const disableDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return patch(`/datasets/${datasetId}/documents/${documentId}/status/disable`) as Promise<CommonResponse>
+}
+
+export const syncDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
+  return get(`/datasets/${datasetId}/documents/${documentId}/notion/sync`) as Promise<CommonResponse>
+}
+
+export const preImportNotionPages: Fetcher<{ notion_info: DataSourceNotionWorkspace[] }, { url: string; datasetId?: string }> = ({ url, datasetId }) => {
+  return get(url, { params: { dataset_id: datasetId } }) as Promise<{ notion_info: DataSourceNotionWorkspace[] }>
 }
 
 export const modifyDocMetadata: Fetcher<CommonResponse, CommonDocReq & { body: { doc_type: string; doc_metadata: Record<string, any> } }> = ({ datasetId, documentId, body }) => {
@@ -113,6 +156,26 @@ export const disableSegment: Fetcher<CommonResponse, { datasetId: string; segmen
   return patch(`/datasets/${datasetId}/segments/${segmentId}/disable`) as Promise<CommonResponse>
 }
 
+export const updateSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; segmentId: string; body: SegmentUpdator }> = ({ datasetId, documentId, segmentId, body }) => {
+  return patch(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`, { body }) as Promise<{ data: SegmentDetailModel; doc_form: string }>
+}
+
+export const addSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; body: SegmentUpdator }> = ({ datasetId, documentId, body }) => {
+  return post(`/datasets/${datasetId}/documents/${documentId}/segment`, { body }) as Promise<{ data: SegmentDetailModel; doc_form: string }>
+}
+
+export const deleteSegment: Fetcher<CommonResponse, { datasetId: string; documentId: string; segmentId: string }> = ({ datasetId, documentId, segmentId }) => {
+  return del(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`) as Promise<CommonResponse>
+}
+
+export const segmentBatchImport: Fetcher<{ job_id: string; job_status: string }, { url: string; body: FormData }> = ({ url, body }) => {
+  return post(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ job_id: string; job_status: string }>
+}
+
+export const checkSegmentBatchImportProgress: Fetcher<{ job_id: string; job_status: string }, { jobID: string }> = ({ jobID }) => {
+  return get(`/datasets/batch_import_status/${jobID}`) as Promise<{ job_id: string; job_status: string }>
+}
+
 // hit testing
 export const hitTesting: Fetcher<HitTestingResponse, { datasetId: string; queryText: string }> = ({ datasetId, queryText }) => {
   return post(`/datasets/${datasetId}/hit-testing`, { body: { query: queryText } }) as Promise<HitTestingResponse>
@@ -123,5 +186,9 @@ export const fetchTestingRecords: Fetcher<HitTestingRecordsResponse, { datasetId
 }
 
 export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, any> = (body: any) => {
-  return post(`/datasets/file-indexing-estimate`, { body }) as Promise<FileIndexingEstimateResponse>
+  return post('/datasets/indexing-estimate', { body }) as Promise<FileIndexingEstimateResponse>
+}
+
+export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string; pageType: string }> = ({ workspaceID, pageID, pageType }) => {
+  return get(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`) as Promise<{ content: string }>
 }

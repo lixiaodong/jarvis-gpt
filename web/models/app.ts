@@ -61,6 +61,10 @@ export type SiteConfig = {
 
 export type AppListResponse = {
   data: App[]
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
 }
 
 export type AppDetailResponse = App
@@ -71,12 +75,14 @@ export type AppTemplatesResponse = {
 
 export type CreateAppResponse = App
 
-export type UpdateAppNameResponse = App
-
 export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig
 
 export type AppDailyConversationsResponse = {
   data: Array<{ date: string; conversation_count: number }>
+}
+
+export type AppStatisticsResponse = {
+  data: Array<{ date: string }>
 }
 
 export type AppDailyEndUsersResponse = {

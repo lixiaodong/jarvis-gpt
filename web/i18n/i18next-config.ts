@@ -31,7 +31,11 @@ import datasetSettingsEn from './lang/dataset-settings.en'
 import datasetSettingsZh from './lang/dataset-settings.zh'
 import datasetCreationEn from './lang/dataset-creation.en'
 import datasetCreationZh from './lang/dataset-creation.zh'
+import exploreEn from './lang/explore.en'
+import exploreZh from './lang/explore.zh'
 import { getLocaleOnClient } from '@/i18n/client'
+
+const localLng = getLocaleOnClient()
 
 const resources = {
   'en': {
@@ -53,6 +57,7 @@ const resources = {
       datasetHitTesting: datasetHitTestingEn,
       datasetSettings: datasetSettingsEn,
       datasetCreation: datasetCreationEn,
+      explore: exploreEn,
     },
   },
   'zh-Hans': {
@@ -74,6 +79,7 @@ const resources = {
       datasetHitTesting: datasetHitTestingZh,
       datasetSettings: datasetSettingsZh,
       datasetCreation: datasetCreationZh,
+      explore: exploreZh,
     },
   },
 }
@@ -82,7 +88,7 @@ i18n.use(initReactI18next)
   // init i18next
   // for all options read: https://www.i18next.com/overview/configuration-options
   .init({
-    lng: getLocaleOnClient(),
+    lng: localLng,
     fallbackLng: 'en',
     // debug: true,
     resources,

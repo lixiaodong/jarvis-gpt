@@ -1,3 +1,14 @@
+export enum ProviderType {
+  openai = 'openai',
+  anthropic = 'anthropic',
+  azure_openai = 'azure_openai',
+  replicate = 'replicate',
+  huggingface_hub = 'huggingface_hub',
+  minimax = 'minimax',
+  tongyi = 'tongyi',
+  spark = 'spark',
+}
+
 export enum AppType {
   'chat' = 'chat',
   'completion' = 'completion',
@@ -38,16 +49,16 @@ export type PromptVariable = {
 }
 
 export type TextTypeFormItem = {
-  label: string,
-  variable: string,
+  label: string
+  variable: string
   required: boolean
   max_length: number
 }
 
 export type SelectTypeFormItem = {
-  label: string,
-  variable: string,
-  required: boolean,
+  label: string
+  variable: string
+  required: boolean
   options: string[]
 }
 /**
@@ -58,7 +69,6 @@ export type UserInputFormItem = {
 } | {
   'select': SelectTypeFormItem
 }
-
 
 export type ToolItem = {
   dataset: {
@@ -84,6 +94,9 @@ export type ModelConfig = {
     enabled: boolean
   }
   suggested_questions_after_answer: {
+    enabled: boolean
+  }
+  speech_to_text: {
     enabled: boolean
   }
   agent_mode: {
@@ -180,6 +193,9 @@ export type SiteConfig = {
   copyright: string
   /** Privacy Policy */
   privacy_policy: string
+
+  icon: string
+  icon_background: string
 }
 
 /**
@@ -190,6 +206,12 @@ export type App = {
   id: string
   /** Name */
   name: string
+
+  /** Icon */
+  icon: string
+  /** Icon Background */
+  icon_background: string
+
   /** Mode */
   mode: AppMode
   /** Enable web app */
@@ -204,6 +226,7 @@ export type App = {
   is_demo: boolean
   /** Model configuration */
   model_config: ModelConfig
+  app_model_config: ModelConfig
   /** Timestamp of creation */
   created_at: number
   /** Web Application Configuration */

@@ -1,7 +1,7 @@
 {
   "extends": [
-    "@antfu",
-    "plugin:react-hooks/recommended"
+    "next",
+    "@antfu"
   ],
   "rules": {
     "@typescript-eslint/consistent-type-definitions": [
@@ -23,6 +23,6 @@
         ]
       }
     ],
-    "react-hooks/exhaustive-deps": "warning"
+    "react-hooks/exhaustive-deps": "warn"
   }
 }

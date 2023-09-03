@@ -1,4 +1,5 @@
 const translation = {
+  title: '应用',
   createApp: '创建应用',
   modes: {
     completion: '文本生成型',
@@ -13,6 +14,7 @@ const translation = {
   join: '参与社区',
   communityIntro: '与团队成员、贡献者和开发者在不同频道中交流',
   roadmap: '产品路线图',
+  appNamePlaceholder: '请输入应用名称',
   newApp: {
     startToCreate: '开始创建一个新应用',
     captionName: '给应用起个名字',
@@ -33,6 +35,13 @@ const translation = {
     appTypeRequired: '请选择应用类型',
     appCreated: '应用已创建',
     appCreateFailed: '应用创建失败',
+  },
+  editApp: {
+    startToEdit: '编辑应用',
+  },
+  emoji: {
+    ok: '确认',
+    cancel: '取消',
   },
 }
 

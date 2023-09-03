@@ -6,6 +6,8 @@ import {
 import { useTranslation } from 'react-i18next'
 import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
 import useSWR, { useSWRConfig } from 'swr'
+import { useContext } from 'use-context-selector'
+import copy from 'copy-to-clipboard'
 import SecretKeyGenerateModal from './secret-key-generate'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
@@ -15,9 +17,8 @@ import type { CreateApiKeyResponse } from '@/models/app'
 import Tooltip from '@/app/components/base/tooltip'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
-import useCopyToClipboard from '@/hooks/use-copy-to-clipboard'
-import { useContext } from 'use-context-selector'
 import I18n from '@/context/i18n'
+import { useAppContext } from '@/context/app-context'
 
 type ISecretKeyModalProps = {
   isShow: boolean
@@ -31,6 +32,7 @@ const SecretKeyModal = ({
   onClose,
 }: ISecretKeyModalProps) => {
   const { t } = useTranslation()
+  const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isVisible, setVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
@@ -39,7 +41,6 @@ const SecretKeyModal = ({
   const { data: apiKeysList } = useSWR(commonParams, fetchApiKeysList)
 
   const [delKeyID, setDelKeyId] = useState('')
-  const [_, copy] = useCopyToClipboard()
 
   const { locale } = useContext(I18n)
 
@@ -58,12 +59,11 @@ const SecretKeyModal = ({
     }
   }, [copyValue])
 
-
   const onDel = async () => {
     setShowConfirmDelete(false)
-    if (!delKeyID) {
+    if (!delKeyID)
       return
-    }
+
     await delApikey({ url: `/apps/${appId}/api-keys/${delKeyID}`, params: {} })
     mutate(commonParams)
   }
@@ -79,12 +79,11 @@ const SecretKeyModal = ({
     return `${token.slice(0, 3)}...${token.slice(-20)}`
   }
 
-  const formatDate = (timestamp: any) => {
-    if (locale === 'en') {
+  const formatDate = (timestamp: string) => {
+    if (locale === 'en')
       return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).format((+timestamp) * 1000)
-    } else {
+    else
       return new Intl.DateTimeFormat('fr-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format((+timestamp) * 1000)
-    }
   }
 
   return (
@@ -111,7 +110,7 @@ const SecretKeyModal = ({
                   <div className='flex-shrink-0 px-3 truncate w-28'>{api.last_used_at ? formatDate(api.last_used_at) : t('appApi.never')}</div>
                   <div className='flex flex-grow px-3'>
                     <Tooltip
-                      selector="top-uniq"
+                      selector={`key-${api.token}`}
                       content={copyValue === api.token ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
                       className='z-10'
                     >
@@ -121,11 +120,13 @@ const SecretKeyModal = ({
                         setCopyValue(api.token)
                       }}></div>
                     </Tooltip>
-                    <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 rounded-lg cursor-pointer ${s.trashIcon}`} onClick={() => {
-                      setDelKeyId(api.id)
-                      setShowConfirmDelete(true)
-                    }}>
-                    </div>
+                    { isCurrentWorkspaceManager
+                      && <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 rounded-lg cursor-pointer ${s.trashIcon}`} onClick={() => {
+                        setDelKeyId(api.id)
+                        setShowConfirmDelete(true)
+                      }}>
+                      </div>
+                    }
                   </div>
                 </div>
               ))}
@@ -134,9 +135,7 @@ const SecretKeyModal = ({
         )
       }
       <div className='flex'>
-        <Button type='default' className={`flex flex-shrink-0 mt-4 ${s.autoWidth}`} onClick={() =>
-          onCreate()
-        }>
+        <Button type='default' className={`flex flex-shrink-0 mt-4 ${s.autoWidth}`} onClick={onCreate} disabled={ !currentWorkspace || currentWorkspace.role === 'normal'}>
           <PlusIcon className='flex flex-shrink-0 w-4 h-4' />
           <div className='text-xs font-medium text-gray-800'>{t('appApi.apiKeyModal.createNewSecretKey')}</div>
         </Button>

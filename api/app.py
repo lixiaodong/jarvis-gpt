@@ -1,5 +1,9 @@
 # -*- coding:utf-8 -*-
 import os
+from datetime import datetime, timedelta
+
+from werkzeug.exceptions import Forbidden
+
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
     from gevent import monkey
     monkey.patch_all()
@@ -12,21 +16,23 @@ from flask import Flask, request, Response, session
 import flask_login
 from flask_cors import CORS
 
-from extensions import ext_session, ext_celery, ext_sentry, ext_redis, ext_login, ext_vector_store, ext_migrate, \
-    ext_database, ext_storage
+from core.model_providers.providers import hosted
+from extensions import ext_session, ext_celery, ext_sentry, ext_redis, ext_login, ext_migrate, \
+    ext_database, ext_storage, ext_mail, ext_stripe
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
 
 # DO NOT REMOVE BELOW
-from models import model, account, dataset, web, task
+from models import model, account, dataset, web, task, source, tool
 from events import event_handlers
 # DO NOT REMOVE ABOVE
 
 import core
 from config import Config, CloudEditionConfig
 from commands import register_commands
-from models.account import TenantAccountJoin
+from models.account import TenantAccountJoin, AccountStatus
 from models.model import Account, EndUser, App
+from services.account_service import TenantService
 
 import warnings
 warnings.simplefilter("ignore", ResourceWarning)
@@ -66,7 +72,7 @@ def create_app(test_config=None) -> Flask:
     register_blueprints(app)
     register_commands(app)
 
-    core.init_app(app)
+    hosted.init_app(app)
 
     return app
 
@@ -77,12 +83,22 @@ def initialize_extensions(app):
     ext_database.init_app(app)
     ext_migrate.init(app, db)
     ext_redis.init_app(app)
-    ext_vector_store.init_app(app)
     ext_storage.init_app(app)
     ext_celery.init_app(app)
     ext_session.init_app(app)
     ext_login.init_app(app)
+    ext_mail.init_app(app)
     ext_sentry.init_app(app)
+    ext_stripe.init_app(app)
+
+
+def _create_tenant_for_account(account):
+    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+
+    TenantService.create_tenant_member(tenant, account, role='owner')
+    account.current_tenant = tenant
+
+    return tenant
 
 
 # Flask-Login configuration
@@ -99,6 +115,9 @@ def load_user(user_id):
         account = db.session.query(Account).filter(Account.id == account_id).first()
 
         if account:
+            if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
+                raise Forbidden('Account is banned or closed.')
+
             workspace_id = session.get('workspace_id')
             if workspace_id:
                 tenant_account_join = db.session.query(TenantAccountJoin).filter(
@@ -112,7 +131,9 @@ def load_user(user_id):
 
                     if tenant_account_join:
                         account.current_tenant_id = tenant_account_join.tenant_id
-                        session['workspace_id'] = account.current_tenant_id
+                    else:
+                        _create_tenant_for_account(account)
+                    session['workspace_id'] = account.current_tenant_id
                 else:
                     account.current_tenant_id = workspace_id
             else:
@@ -120,7 +141,16 @@ def load_user(user_id):
                     TenantAccountJoin.account_id == account.id).first()
                 if tenant_account_join:
                     account.current_tenant_id = tenant_account_join.tenant_id
-                    session['workspace_id'] = account.current_tenant_id
+                else:
+                    _create_tenant_for_account(account)
+                session['workspace_id'] = account.current_tenant_id
+
+            current_time = datetime.utcnow()
+
+            # update last_active_at when last_active_at is more than 10 minutes ago
+            if current_time - account.last_active_at > timedelta(minutes=10):
+                account.last_active_at = current_time
+                db.session.commit()
 
             # Log in the user with the updated user_id
             flask_login.login_user(account, remember=True)
@@ -145,13 +175,17 @@ def register_blueprints(app):
     from controllers.web import bp as web_bp
     from controllers.console import bp as console_app_bp
 
+    CORS(service_api_bp,
+         allow_headers=['Content-Type', 'Authorization', 'X-App-Code'],
+         methods=['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS', 'PATCH']
+         )
     app.register_blueprint(service_api_bp)
 
     CORS(web_bp,
          resources={
              r"/*": {"origins": app.config['WEB_API_CORS_ALLOW_ORIGINS']}},
          supports_credentials=True,
-         allow_headers=['Content-Type', 'Authorization'],
+         allow_headers=['Content-Type', 'Authorization', 'X-App-Code'],
          methods=['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS', 'PATCH'],
          expose_headers=['X-Version', 'X-Env']
          )
@@ -215,6 +249,19 @@ def threads():
     return {
         'thread_num': num_threads,
         'threads': thread_list
+    }
+
+
+@app.route('/db-pool-stat')
+def pool_stat():
+    engine = db.engine
+    return {
+        'pool_size': engine.pool.size(),
+        'checked_in_connections': engine.pool.checkedin(),
+        'checked_out_connections': engine.pool.checkedout(),
+        'overflow_connections': engine.pool.overflow(),
+        'connection_timeout': engine.pool.timeout(),
+        'recycle_time': db.engine.pool._recycle
     }
 
 

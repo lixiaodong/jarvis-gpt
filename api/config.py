@@ -28,9 +28,11 @@ DEFAULTS = {
     'SESSION_REDIS_USE_SSL': 'False',
     'OAUTH_REDIRECT_PATH': '/console/api/oauth/authorize',
     'OAUTH_REDIRECT_INDEX_PATH': '/',
-    'CONSOLE_URL': 'https://cloud.dify.ai',
-    'API_URL': 'https://api.dify.ai',
-    'APP_URL': 'https://udify.app',
+    'CONSOLE_WEB_URL': 'https://cloud.dify.ai',
+    'CONSOLE_API_URL': 'https://cloud.dify.ai',
+    'SERVICE_API_URL': 'https://api.dify.ai',
+    'APP_WEB_URL': 'https://udify.app',
+    'APP_API_URL': 'https://udify.app',
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
     'CHECK_UPDATE_URL': 'https://updates.dify.ai',
@@ -39,13 +41,30 @@ DEFAULTS = {
     'SESSION_USE_SIGNER': 'True',
     'DEPLOY_ENV': 'PRODUCTION',
     'SQLALCHEMY_POOL_SIZE': 30,
+    'SQLALCHEMY_POOL_RECYCLE': 3600,
     'SQLALCHEMY_ECHO': 'False',
     'SENTRY_TRACES_SAMPLE_RATE': 1.0,
     'SENTRY_PROFILES_SAMPLE_RATE': 1.0,
     'WEAVIATE_GRPC_ENABLED': 'True',
+    'WEAVIATE_BATCH_SIZE': 100,
     'CELERY_BACKEND': 'database',
-    'PDF_PREVIEW': 'True',
     'LOG_LEVEL': 'INFO',
+    'HOSTED_OPENAI_QUOTA_LIMIT': 200,
+    'HOSTED_OPENAI_ENABLED': 'False',
+    'HOSTED_OPENAI_PAID_ENABLED': 'False',
+    'HOSTED_OPENAI_PAID_INCREASE_QUOTA': 1,
+    'HOSTED_AZURE_OPENAI_ENABLED': 'False',
+    'HOSTED_AZURE_OPENAI_QUOTA_LIMIT': 200,
+    'HOSTED_ANTHROPIC_QUOTA_LIMIT': 600000,
+    'HOSTED_ANTHROPIC_ENABLED': 'False',
+    'HOSTED_ANTHROPIC_PAID_ENABLED': 'False',
+    'HOSTED_ANTHROPIC_PAID_INCREASE_QUOTA': 1000000,
+    'HOSTED_ANTHROPIC_PAID_MIN_QUANTITY': 20,
+    'HOSTED_ANTHROPIC_PAID_MAX_QUANTITY': 100,
+    'TENANT_DOCUMENT_COUNT': 100,
+    'CLEAN_DAY_SETTING': 30,
+    'UPLOAD_FILE_SIZE_LIMIT': 15,
+    'UPLOAD_FILE_BATCH_LIMIT': 5,
 }
 
 
@@ -73,16 +92,20 @@ class Config:
 
     def __init__(self):
         # app settings
+        self.CONSOLE_API_URL = get_env('CONSOLE_URL') if get_env('CONSOLE_URL') else get_env('CONSOLE_API_URL')
+        self.CONSOLE_WEB_URL = get_env('CONSOLE_URL') if get_env('CONSOLE_URL') else get_env('CONSOLE_WEB_URL')
+        self.SERVICE_API_URL = get_env('API_URL') if get_env('API_URL') else get_env('SERVICE_API_URL')
+        self.APP_WEB_URL = get_env('APP_URL') if get_env('APP_URL') else get_env('APP_WEB_URL')
+        self.APP_API_URL = get_env('APP_URL') if get_env('APP_URL') else get_env('APP_API_URL')
         self.CONSOLE_URL = get_env('CONSOLE_URL')
         self.API_URL = get_env('API_URL')
         self.APP_URL = get_env('APP_URL')
-        self.CURRENT_VERSION = "0.2.0"
+        self.CURRENT_VERSION = "0.3.19"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
         self.TESTING = False
         self.LOG_LEVEL = get_env('LOG_LEVEL')
-        self.PDF_PREVIEW = get_bool_env('PDF_PREVIEW')
 
         # Your App secret key will be used for securely signing the session cookie
         # Make sure you are changing this key for your deployment with a strong key.
@@ -136,6 +159,7 @@ class Config:
         self.WEAVIATE_ENDPOINT = get_env('WEAVIATE_ENDPOINT')
         self.WEAVIATE_API_KEY = get_env('WEAVIATE_API_KEY')
         self.WEAVIATE_GRPC_ENABLED = get_bool_env('WEAVIATE_GRPC_ENABLED')
+        self.WEAVIATE_BATCH_SIZE = int(get_env('WEAVIATE_BATCH_SIZE'))
 
         # qdrant settings
         self.QDRANT_URL = get_env('QDRANT_URL')
@@ -143,9 +167,14 @@ class Config:
 
         # cors settings
         self.CONSOLE_CORS_ALLOW_ORIGINS = get_cors_allow_origins(
-            'CONSOLE_CORS_ALLOW_ORIGINS', self.CONSOLE_URL)
+            'CONSOLE_CORS_ALLOW_ORIGINS', self.CONSOLE_WEB_URL)
         self.WEB_API_CORS_ALLOW_ORIGINS = get_cors_allow_origins(
             'WEB_API_CORS_ALLOW_ORIGINS', '*')
+
+        # mail settings
+        self.MAIL_TYPE = get_env('MAIL_TYPE')
+        self.MAIL_DEFAULT_SEND_FROM = get_env('MAIL_DEFAULT_SEND_FROM')
+        self.RESEND_API_KEY = get_env('RESEND_API_KEY')
 
         # sentry settings
         self.SENTRY_DSN = get_env('SENTRY_DSN')
@@ -162,7 +191,10 @@ class Config:
         }
 
         self.SQLALCHEMY_DATABASE_URI = f"postgresql://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}"
-        self.SQLALCHEMY_ENGINE_OPTIONS = {'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE'))}
+        self.SQLALCHEMY_ENGINE_OPTIONS = {
+            'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
+            'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE'))
+        }
 
         self.SQLALCHEMY_ECHO = get_bool_env('SQLALCHEMY_ECHO')
 
@@ -174,7 +206,46 @@ class Config:
         self.BROKER_USE_SSL = self.CELERY_BROKER_URL.startswith('rediss://')
 
         # hosted provider credentials
-        self.OPENAI_API_KEY = get_env('OPENAI_API_KEY')
+        self.HOSTED_OPENAI_ENABLED = get_bool_env('HOSTED_OPENAI_ENABLED')
+        self.HOSTED_OPENAI_API_KEY = get_env('HOSTED_OPENAI_API_KEY')
+        self.HOSTED_OPENAI_API_BASE = get_env('HOSTED_OPENAI_API_BASE')
+        self.HOSTED_OPENAI_API_ORGANIZATION = get_env('HOSTED_OPENAI_API_ORGANIZATION')
+        self.HOSTED_OPENAI_QUOTA_LIMIT = int(get_env('HOSTED_OPENAI_QUOTA_LIMIT'))
+        self.HOSTED_OPENAI_PAID_ENABLED = get_bool_env('HOSTED_OPENAI_PAID_ENABLED')
+        self.HOSTED_OPENAI_PAID_STRIPE_PRICE_ID = get_env('HOSTED_OPENAI_PAID_STRIPE_PRICE_ID')
+        self.HOSTED_OPENAI_PAID_INCREASE_QUOTA = int(get_env('HOSTED_OPENAI_PAID_INCREASE_QUOTA'))
+
+        self.HOSTED_AZURE_OPENAI_ENABLED = get_bool_env('HOSTED_AZURE_OPENAI_ENABLED')
+        self.HOSTED_AZURE_OPENAI_API_KEY = get_env('HOSTED_AZURE_OPENAI_API_KEY')
+        self.HOSTED_AZURE_OPENAI_API_BASE = get_env('HOSTED_AZURE_OPENAI_API_BASE')
+        self.HOSTED_AZURE_OPENAI_QUOTA_LIMIT = int(get_env('HOSTED_AZURE_OPENAI_QUOTA_LIMIT'))
+
+        self.HOSTED_ANTHROPIC_ENABLED = get_bool_env('HOSTED_ANTHROPIC_ENABLED')
+        self.HOSTED_ANTHROPIC_API_BASE = get_env('HOSTED_ANTHROPIC_API_BASE')
+        self.HOSTED_ANTHROPIC_API_KEY = get_env('HOSTED_ANTHROPIC_API_KEY')
+        self.HOSTED_ANTHROPIC_QUOTA_LIMIT = int(get_env('HOSTED_ANTHROPIC_QUOTA_LIMIT'))
+        self.HOSTED_ANTHROPIC_PAID_ENABLED = get_bool_env('HOSTED_ANTHROPIC_PAID_ENABLED')
+        self.HOSTED_ANTHROPIC_PAID_STRIPE_PRICE_ID = get_env('HOSTED_ANTHROPIC_PAID_STRIPE_PRICE_ID')
+        self.HOSTED_ANTHROPIC_PAID_INCREASE_QUOTA = int(get_env('HOSTED_ANTHROPIC_PAID_INCREASE_QUOTA'))
+        self.HOSTED_ANTHROPIC_PAID_MIN_QUANTITY = int(get_env('HOSTED_ANTHROPIC_PAID_MIN_QUANTITY'))
+        self.HOSTED_ANTHROPIC_PAID_MAX_QUANTITY = int(get_env('HOSTED_ANTHROPIC_PAID_MAX_QUANTITY'))
+
+        self.STRIPE_API_KEY = get_env('STRIPE_API_KEY')
+        self.STRIPE_WEBHOOK_SECRET = get_env('STRIPE_WEBHOOK_SECRET')
+
+        # notion import setting
+        self.NOTION_CLIENT_ID = get_env('NOTION_CLIENT_ID')
+        self.NOTION_CLIENT_SECRET = get_env('NOTION_CLIENT_SECRET')
+        self.NOTION_INTEGRATION_TYPE = get_env('NOTION_INTEGRATION_TYPE')
+        self.NOTION_INTERNAL_SECRET = get_env('NOTION_INTERNAL_SECRET')
+        self.NOTION_INTEGRATION_TOKEN = get_env('NOTION_INTEGRATION_TOKEN')
+
+        self.TENANT_DOCUMENT_COUNT = get_env('TENANT_DOCUMENT_COUNT')
+        self.CLEAN_DAY_SETTING = get_env('CLEAN_DAY_SETTING')
+
+        # uploading settings
+        self.UPLOAD_FILE_SIZE_LIMIT = int(get_env('UPLOAD_FILE_SIZE_LIMIT'))
+        self.UPLOAD_FILE_BATCH_LIMIT = int(get_env('UPLOAD_FILE_BATCH_LIMIT'))
 
 
 class CloudEditionConfig(Config):

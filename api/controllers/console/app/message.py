@@ -3,7 +3,7 @@ import logging
 from typing import Union, Generator
 
 from flask import Response, stream_with_context
-from flask_login import current_user, login_required
+from flask_login import current_user
 from flask_restful import Resource, reqparse, marshal_with, fields
 from flask_restful.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
@@ -14,8 +14,9 @@ from controllers.console.app.error import CompletionRequestError, ProviderNotIni
     AppMoreLikeThisDisabledError, ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.llm.error import LLMRateLimitError, LLMBadRequestError, LLMAuthorizationError, LLMAPIConnectionError, \
+from core.model_providers.error import LLMRateLimitError, LLMBadRequestError, LLMAuthorizationError, LLMAPIConnectionError, \
     ProviderTokenNotInitError, LLMAPIUnavailableError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.login.login import login_required
 from libs.helper import uuid_value, TimestampField
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from extensions.ext_database import db
@@ -269,8 +270,8 @@ class MessageMoreLikeThisApi(Resource):
             raise NotFound("Message Not Exists.")
         except MoreLikeThisDisabledError:
             raise AppMoreLikeThisDisabledError()
-        except ProviderTokenNotInitError:
-            raise ProviderNotInitializeError()
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
@@ -297,8 +298,8 @@ def compact_response(response: Union[dict | Generator]) -> Response:
                 yield "data: " + json.dumps(api.handle_error(NotFound("Message Not Exists.")).get_json()) + "\n\n"
             except MoreLikeThisDisabledError:
                 yield "data: " + json.dumps(api.handle_error(AppMoreLikeThisDisabledError()).get_json()) + "\n\n"
-            except ProviderTokenNotInitError:
-                yield "data: " + json.dumps(api.handle_error(ProviderNotInitializeError()).get_json()) + "\n\n"
+            except ProviderTokenNotInitError as ex:
+                yield "data: " + json.dumps(api.handle_error(ProviderNotInitializeError(ex.description)).get_json()) + "\n\n"
             except QuotaExceededError:
                 yield "data: " + json.dumps(api.handle_error(ProviderQuotaExceededError()).get_json()) + "\n\n"
             except ModelCurrentlyNotSupportError:
@@ -339,8 +340,8 @@ class MessageSuggestedQuestionApi(Resource):
             raise NotFound("Message not found")
         except ConversationNotExistsError:
             raise NotFound("Conversation not found")
-        except ProviderTokenNotInitError:
-            raise ProviderNotInitializeError()
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:

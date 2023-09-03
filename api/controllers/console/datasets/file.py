@@ -1,13 +1,15 @@
 import datetime
 import hashlib
 import tempfile
+import chardet
 import time
 import uuid
 from pathlib import Path
 
 from cachetools import TTLCache
 from flask import request, current_app
-from flask_login import login_required, current_user
+from flask_login import current_user
+from core.login.login import login_required
 from flask_restful import Resource, marshal_with, fields
 from werkzeug.exceptions import NotFound
 
@@ -16,8 +18,7 @@ from controllers.console.datasets.error import NoFileUploadedError, TooManyFiles
     UnsupportedFileTypeError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.index.readers.html_parser import HTMLParser
-from core.index.readers.pdf_parser import PDFParser
+from core.data_loader.file_extractor import FileExtractor
 from extensions.ext_storage import storage
 from libs.helper import TimestampField
 from extensions.ext_database import db
@@ -25,12 +26,28 @@ from models.model import UploadFile
 
 cache = TTLCache(maxsize=None, ttl=30)
 
-FILE_SIZE_LIMIT = 15 * 1024 * 1024  # 15MB
-ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm']
+ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx']
 PREVIEW_WORDS_LIMIT = 3000
 
 
 class FileApi(Resource):
+    upload_config_fields = {
+        'file_size_limit': fields.Integer,
+        'batch_count_limit': fields.Integer
+    }
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(upload_config_fields)
+    def get(self):
+        file_size_limit = current_app.config.get("UPLOAD_FILE_SIZE_LIMIT")
+        batch_count_limit = current_app.config.get("UPLOAD_FILE_BATCH_LIMIT")
+        return {
+            'file_size_limit': file_size_limit,
+            'batch_count_limit': batch_count_limit
+        }, 200
+
     file_fields = {
         'id': fields.String,
         'name': fields.String,
@@ -60,12 +77,13 @@ class FileApi(Resource):
         file_content = file.read()
         file_size = len(file_content)
 
-        if file_size > FILE_SIZE_LIMIT:
-            message = "({file_size} > {FILE_SIZE_LIMIT})"
+        file_size_limit = current_app.config.get("UPLOAD_FILE_SIZE_LIMIT") * 1024 * 1024
+        if file_size > file_size_limit:
+            message = "({file_size} > {file_size_limit})"
             raise FileTooLargeError(message)
 
         extension = file.filename.split('.')[-1]
-        if extension not in ALLOWED_EXTENSIONS:
+        if extension.lower() not in ALLOWED_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
         # user uuid as file name
@@ -118,27 +136,10 @@ class FilePreviewApi(Resource):
 
         # extract text from file
         extension = upload_file.extension
-        if extension not in ALLOWED_EXTENSIONS:
+        if extension.lower() not in ALLOWED_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            suffix = Path(upload_file.key).suffix
-            filepath = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
-            storage.download(upload_file.key, filepath)
-
-            if extension == 'pdf':
-                parser = PDFParser({'upload_file': upload_file})
-                text = parser.parse_file(Path(filepath))
-            elif extension in ['html', 'htm']:
-                # Use BeautifulSoup to extract text
-                parser = HTMLParser()
-                text = parser.parse_file(Path(filepath))
-            else:
-                # ['txt', 'markdown', 'md']
-                with open(filepath, "rb") as fp:
-                    data = fp.read()
-                    text = data.decode(encoding='utf-8').strip() if data else ''
-
+        text = FileExtractor.load(upload_file, return_text=True)
         text = text[0:PREVIEW_WORDS_LIMIT] if text else ''
         return {'content': text}
 

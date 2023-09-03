@@ -5,19 +5,35 @@ const translation = {
     getKeyTip: '从 OpenAI 获取你的 API Key',
     placeholder: '你的 OpenAI API Key（例如 sk-xxxx）',
   },
+  apiKeyInfo: {
+    cloud: {
+      trial: {
+        title: '您正在使用 {{providerName}} 的试用配额。',
+        description: '试用配额仅供您测试使用。 在试用配额用完之前，请自行设置模型提供商或购买额外配额。',
+      },
+      exhausted: {
+        title: '您的试用额度已用完，请设置您的APIKey。',
+        description: '您的试用配额已用完。 请设置您自己的模型提供商或购买额外配额。',
+      },
+    },
+    selfHost: {
+      title: {
+        row1: '首先，',
+        row2: '设置您的模型提供商。',
+      },
+    },
+    callTimes: '调用次数',
+    usedToken: '使用 Tokens',
+    setAPIBtn: '设置模型提供商',
+    tryCloud: '或者尝试使用 Dify 的云版本并使用试用配额',
+  },
   overview: {
     title: '概览',
     appInfo: {
       explanation: '开箱即用的 AI WebApp',
       accessibleAddress: '公开访问 URL',
       preview: '预览',
-      share: {
-        entry: '分享',
-        explanation: '将以下网址分享出去，让更多人访问该应用',
-        shareUrl: '分享 URL',
-        copyLink: '复制链接',
-        regenerate: '重新生成',
-      },
+      regenerate: '重新生成',
       preUseReminder: '使用前请先打开开关',
       settings: {
         entry: '设置',
@@ -36,9 +52,18 @@ const translation = {
           privacyPolicyTip: '帮助访问者了解该应用收集的数据，可参考 Dify 的<privacyPolicyLink>隐私政策</privacyPolicyLink>。',
         },
       },
+      embedded: {
+        entry: '嵌入',
+        title: '嵌入到网站中',
+        explanation: '选择一种方式将聊天应用嵌入到你的网站中',
+        iframe: '将以下 iframe 嵌入到你的网站中的目标位置',
+        scripts: '将以下代码嵌入到你的网站中',
+        copied: '已复制',
+        copy: '复制',
+      },
       customize: {
         way: '方法',
-        entry: '想要进一步自定义 WebApp？',
+        entry: '定制化',
         title: '定制化 AI WebApp',
         explanation: '你可以定制化 Web App 前端以符合你的情景与风格需求',
         way1: {
@@ -71,6 +96,8 @@ const translation = {
   },
   analysis: {
     title: '分析',
+    ms: '毫秒',
+    tokenPS: 'Token/秒',
     totalMessages: {
       title: '全部消息数',
       explanation: '反映 AI 每天的互动总次数，每回答用户一个问题算一条 Message。提示词编排和调试的消息不计入。',
@@ -95,6 +122,10 @@ const translation = {
     avgResponseTime: {
       title: '平均响应时间',
       explanation: '衡量 AI 应用处理和回复用户请求所花费的平均时间，单位为毫秒，反映性能和用户体验。仅在文本型应用提供。',
+    },
+    tps: {
+      title: 'Token 输出速度',
+      explanation: '衡量 LLM 的性能。统计 LLM 从请求开始到输出完毕这段期间的 Tokens 输出速度。',
     },
   },
 }
