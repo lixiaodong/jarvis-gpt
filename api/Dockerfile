@@ -3,7 +3,7 @@ FROM python:3.10-slim AS base
 
 LABEL maintainer="takatost@gmail.com"
 
-RUN apt-get update \ 
+RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc g++ python3-dev libc-dev libffi-dev
 
 COPY requirements.txt /requirements.txt
@@ -22,11 +22,11 @@ ENV SERVICE_API_URL http://127.0.0.1:5001
 ENV APP_API_URL http://127.0.0.1:5001
 ENV APP_WEB_URL http://127.0.0.1:3000
 
-EXPOSE 5001
+EXPOSE 5001 80
 
 WORKDIR /app/api
 
-RUN apt-get update \ 
+RUN apt-get update \
     && apt-get install -y --no-install-recommends bash curl wget vim nodejs \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
