@@ -97,7 +97,7 @@ export default function AppSelector() {
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
                         href={
-                          locale === 'en' ? 'https://docs.dify.ai/' : `https://docs.dify.ai/v/${locale.toLowerCase()}/`
+                          locale === 'en' ? 'https://docs.jettylee.com/' : `https://docs.jettylee.com/v/${locale.toLowerCase()}/`
                         }
                         target='_blank'>
                         <div>{t('common.userProfile.helpCenter')}</div>
