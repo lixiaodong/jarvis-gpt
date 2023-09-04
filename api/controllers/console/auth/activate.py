@@ -32,7 +32,7 @@ class ActivateCheckApi(Resource):
 
 
 class ActivateApi(Resource):
-    def post(self):
+    def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument('workspace_id', type=str, required=True, nullable=False, location='json')
         parser.add_argument('email', type=email, required=True, nullable=False, location='json')
