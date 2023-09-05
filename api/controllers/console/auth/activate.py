@@ -34,14 +34,14 @@ class ActivateCheckApi(Resource):
 class ActivateApi(Resource):
     def get(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('workspace_id', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('email', type=email, required=True, nullable=False, location='json')
-        parser.add_argument('token', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('name', type=str_len(30), required=True, nullable=False, location='json')
-        parser.add_argument('password', type=valid_password, required=True, nullable=False, location='json')
+        parser.add_argument('workspace_id', type=str, required=True, nullable=False, location='args')
+        parser.add_argument('email', type=email, required=True, nullable=False, location='args')
+        parser.add_argument('token', type=str, required=True, nullable=False, location='args')
+        parser.add_argument('name', type=str_len(30), required=True, nullable=False, location='args')
+        parser.add_argument('password', type=valid_password, required=True, nullable=False, location='args')
         parser.add_argument('interface_language', type=supported_language, required=True, nullable=False,
-                            location='json')
-        parser.add_argument('timezone', type=timezone, required=True, nullable=False, location='json')
+                            location='args')
+        parser.add_argument('timezone', type=timezone, required=True, nullable=False, location='args')
         args = parser.parse_args()
 
         account = RegisterService.get_account_if_token_valid(args['workspace_id'], args['email'], args['token'])
