@@ -33,31 +33,36 @@ class ActivateCheckApi(Resource):
 
 class ActivateApi(Resource):
     def get(self):
-        workspace_id = request.args.get('workspace_id')
-        email = request.args.get('email')
-        token = request.args.get('token')
-        name = request.args.get('name')
-        password = request.args.get('password')
-        interface_language = request.args.get('interface_language')
-        timezone = request.args.get('timezone')
+        parser = reqparse.RequestParser()
+        parser.add_argument('workspace_id', type=str, required=True, nullable=False, location='args')
+        parser.add_argument('email', type=email, required=True, nullable=False, location='args')
+        parser.add_argument('token', type=str, required=True, nullable=False, location='args')
+        parser.add_argument('name', type=str_len(30), required=True, nullable=False, location='args')
+        parser.add_argument('password', type=valid_password, required=True, nullable=False, location='args')
+        parser.add_argument('interface_language', type=supported_language, required=True, nullable=False,
+                            location='args')
+        parser.add_argument('timezone', type=timezone, required=True, nullable=False, location='args')
+        args = parser.parse_args()
 
-        account = RegisterService.get_account_if_token_valid(workspace_id, email, token)
+        account = RegisterService.get_account_if_token_valid(args['workspace_id'], args['email'], args['token'])
         if account is None:
             raise AlreadyActivateError()
 
-        RegisterService.revoke_token(workspace_id, email, token)
+        RegisterService.revoke_token(args['workspace_id'], args['email'], args['token'])
 
-        account.name = name
+        account.name = args['name']
 
+        # generate password salt
         salt = secrets.token_bytes(16)
         base64_salt = base64.b64encode(salt).decode()
 
-        password_hashed = hash_password(password, salt)
+        # encrypt password with salt
+        password_hashed = hash_password(args['password'], salt)
         base64_password_hashed = base64.b64encode(password_hashed).decode()
         account.password = base64_password_hashed
         account.password_salt = base64_salt
-        account.interface_language = interface_language
-        account.timezone = timezone
+        account.interface_language = args['interface_language']
+        account.timezone = args['timezone']
         account.interface_theme = 'light'
         account.status = AccountStatus.ACTIVE.value
         account.initialized_at = datetime.utcnow()
